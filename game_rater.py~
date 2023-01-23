@@ -604,6 +604,7 @@ while running:
     text = font.render("<", True, WHITE, pygame.Color('darkslategray'))
     textRect = text.get_rect()
     textRect.center = (625, 150)
+    print(textRect.center)
     screen.blit(text, textRect)
 
     pygame.draw.rect(screen, pygame.Color('darkslategray'), platform_rect_r)
@@ -611,6 +612,7 @@ while running:
     text = font.render(">", True, WHITE, pygame.Color('darkslategray'))
     textRect = text.get_rect()
     textRect.center = (876, 150)
+    print(textRect.center)
     screen.blit(text, textRect)
 
     for title in sorted_games:
