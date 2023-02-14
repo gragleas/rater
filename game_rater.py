@@ -16,6 +16,7 @@ from pygame.locals import *
 import sys
 from unidecode import unidecode
 import time
+from difflib import SequenceMatcher
 
 platform_list = {
     "PC": "https://www.mobygames.com/game/windows/",
@@ -32,8 +33,24 @@ platform_list = {
     
 }
 
+platform_names = {
+		"PC": "windows",
+		"VR": "windows",
+		"Wii": "wii",
+		"Xbox": "xbox",
+		"Xbox 360": "xbox360",
+		"Xbox One": "xbox-one",
+		"Gamecube": "gamecube",
+		"PS2": "playstation-2",
+		"PS3": "playstation-3",
+		"PS4": "playstation-4",
+		"PS5": "playstation-5"
+}
+
 platforms = [key for key in platform_list]
 
+def similar(a, b):
+    return SequenceMatcher(None, a, b).ratio()
 
 class Game:
     def __init__(self, name, rating, splits, platform, finished, comments="a"):
@@ -43,8 +60,8 @@ class Game:
         self.platform = platform
         self.finished = finished
         self.image_dup_count = 0
-        if not os.path.exists("covers/" + name + ".jpg"):
-            self.get_image()
+        #if not os.path.exists("covers/" + name + ".jpg"):
+        #    self.get_image()
         self.map_splits()
         self.is_finished()
         self.image = "covers/" + self.name + ".jpg"
@@ -76,55 +93,43 @@ class Game:
     def next_image(self):
         self.image_dup_count += 1
         self.get_image()
+        
+        
+    def get_image_new(self):
+        response = requests.get("https://mobygames.com/search/quick?q=" + self.name)
+        soup = bs(response.text, "html.parser")
+        urls = soup.find_all('a', attrs={'href': re.compile("^https://")})
+        valid_url = ''
+        for i in urls:
+            name = i["href"].replace("https://www.mobygames.com/game/", '')
+            temp_name = self.name.replace("'", "-").replace("_", "-").translate(str.maketrans('', '', string.punctuation.replace("-",""))).replace(' ', '-').lower()
+            #print(name, platform_names[self.platform] + "/" + temp_name)
+            if similar(name, platform_names[self.platform] + "/" + temp_name) > .8:
+                valid_url = i["href"]
+                print("valid", valid_url)
+                break
+        if valid_url:
+		        response = requests.get(valid_url)
+		        soup = bs(response.content, "html.parser")
+		        url = ''
+		        images = soup.findAll('img')
+		        for img in images:
+		            if img.has_attr('src') and "covers" in img["src"]:
+		                url = img['src']
 
-    def get_image(self):
-        name = self.name
-        name = name.translate(str.maketrans('', '', string.punctuation.replace("-", "").replace("_", ""))).replace(' ','-').lower()
-        special_chars = []
-        new_name = name
-        for q in name:
-            if not q.isascii():
-                special_chars.append((name.index(q), q))
-                new_name = name.replace(q, '', 1)
-        if new_name[:3] == "the":
-            new_name = new_name.replace("the-", "")
-        new_name += "_" * self.image_dup_count
-        while True:
-            try:
-                response = requests.get(platform_list[self.platform] + new_name)
-                soup = bs(response.text, "html.parser")
-                urls = soup.find_all('a', attrs={'href': re.compile("^https://")})
-                try:
-                    valid_url = [str(link["href"]) for link in urls if new_name + "/cover-art/" in str(link["href"])][0]
-                except:
-                    #print("Game not found")
-                    new_name += "_"
-                    continue
-                response = requests.get(valid_url)
-                soup = bs(response.content, "html.parser")
-                image = soup.select("div img")
-                url = image[0]["src"]
-                i = 1
-                temp_name = self.name
-                temp_name = temp_name.replace("'", "-").replace("_", "-").translate(str.maketrans('', '', string.punctuation.replace("-",""))).replace(' ', '-').lower()
-                temp_name = unidecode(temp_name)
-                while temp_name.replace("_", "") not in url:
-                    url = image[i]["src"]
-                    i += 1
-                image_data = requests.get("https://www.mobygames.com/" + url).content
-                with open("covers/" + self.name + ".jpg", "wb") as handler:
-                    handler.write(image_data)
-                    return 1
-            except:
-                new_name += "_"
-                continue
+		        image_data = requests.get("https://www.mobygames.com" + url).content
+		        with open("covers/" + self.name + ".jpg", "wb") as handler:
+		            handler.write(image_data)
+		            return 1
+		            
+        else:
+		        print("Game not found! Check spelling and platform.")
 
-game = Game("Maneater", 20, "5/5/5/5", "PC", True, comments="a")
-game.get_image()
+#game = Game("God of War: Ragnarok", 20, "5/5/5/5", "PS5", True, comments="a")
+#game.get_image_new()
 WIDTH = 1500
 HEIGHT = 700
 FPS = 30
-
 # Define Colors 
 WHITE = (255, 255, 255)
 BLACK = (0, 0, 0)
@@ -145,7 +150,7 @@ screen = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption("Game Ratings")
 clock = pygame.time.Clock()  ## For syncing the FPS
 
-
+    
 def drawArc(surf, color, center, radius, width, end_angle):
     arc_rect = pygame.Rect(0, 0, radius * 2, radius * 2)
     arc_rect.center = center
@@ -227,7 +232,7 @@ active = False
 ## Game loop
 running = True
 new_entry_active = False
-title_active = False
+title_active = True
 try:
     data = pd.read_csv("updated_data.csv")
 except:
@@ -285,9 +290,14 @@ comment_text = selected_game.comments
 
 new_entry_rect = pygame.Rect(WIDTH * .88 - 97, HEIGHT - 100, 194, 40)
 blank_game = Game("New Game", 0, "0/0/0/0", "PC", "N", "")
-new_title = "New Game"
 
-new_title_rect = pygame.Rect(WIDTH // 2 - 130, 70, 260, 60)
+new_title = selected_game.name
+text = font.render(new_title, True, pygame.Color('WHITE'), pygame.Color('darkslategray'))
+new_title_rect = text.get_rect()
+new_title_rect.width *= 2
+new_title_rect.width += 8
+new_title_rect.height += 36
+new_title_rect.center = (WIDTH/2, 100)
 
 delete_rect = pygame.Rect(WIDTH * .88 - 105, HEIGHT - 50, 212, 40)
 
@@ -296,8 +306,8 @@ platform_text = font.render(selected_game.platform, True, WHITE, pygame.Color('d
 platform_textRect = platform_text.get_rect()
 platform_textRect.center = (WIDTH / 2, 150)
 
-platform_rect_l = pygame.Rect(platform_textRect.x - platform_textRect.width / 2 - 20, 140, 25, 25)
-platform_rect_r = pygame.Rect(platform_textRect.x + platform_textRect.width / 2 + 20, 140, 25, 25)
+platform_rect_l = pygame.Rect(615, 140, 25, 25)
+platform_rect_r = pygame.Rect(866, 140, 25, 25)
 
 alpha_rect = pygame.Rect(WIDTH // 2 - 129, 26, 158, 30)
 rating_rect = pygame.Rect(WIDTH // 2 + 58, 26, 84, 30)
@@ -400,9 +410,12 @@ while running:
                     selected_game.edit_entry("Finished", finished)
                     #selected_game.edit_entry("Title", new_title)
                     selected_game.edit_entry("Platform", selected_game.platform)
+                    selected_game.edit_entry("Title", new_title)
 
                 selected_game.comments = comment_text
                 selected_game.finished = finished
+                os.rename("covers/" + selected_game.name + ".jpg", "covers/" + new_title + ".jpg")
+                selected_game.name = new_title
                 game_list, sorted_games, game_rects = reload_structures(sorting_by)
 
                 selected_game = game_list[selected_game.name]
@@ -415,14 +428,14 @@ while running:
 
                 loaded = False
                 new_entry_active = False
-                title_active = False
+                title_active = True
                 comment_active = False
 
             if discard_rect.collidepoint(event.pos):
                 comment_text = selected_game.comments
                 temp_stars = selected_game.splits
                 finished = selected_game.finished
-                title_active = False
+                title_active = True
                 comment_active = False
 
                 if new_entry_active:
@@ -445,8 +458,16 @@ while running:
                     loaded = False
                     comment_text = selected_game.comments
                     new_entry_active = False
-                    title_active = False
+                    title_active = True
+                    new_title = selected_game.name
                     comment_active = False
+                    
+                    text = font.render(new_title, True, pygame.Color('WHITE'), pygame.Color('darkslategray'))
+                    new_title_rect = text.get_rect()
+                    new_title_rect.width *= 2
+                    new_title_rect.width += 8
+                    new_title_rect.height += 36
+                    new_title_rect.center = (WIDTH/2, 100)
 
             for i in range(4):
                 if plus_list[i].collidepoint(pygame.mouse.get_pos()):
@@ -550,7 +571,8 @@ while running:
             pygame.draw.rect(screen, pygame.Color('chartreuse4'), new_title_rect)
         else:
             pygame.draw.rect(screen, WHITE, new_title_rect)
-
+    if title_active:
+        pygame.draw.rect(screen, pygame.Color('chartreuse4'), new_title_rect)
     image = pygame.image.load(selected_game.image)
     width = image.get_width()
     height = image.get_height()
@@ -574,28 +596,28 @@ while running:
     platform_textRect.center = (WIDTH / 2, 150)
     screen.blit(platform_text, platform_textRect)
 
-    platform_rect_l = pygame.Rect(platform_textRect.x - 50, 140, 25, 25)
-    platform_rect_r = pygame.Rect(platform_textRect.x + platform_textRect.width + 30, 140, 25, 25)
+    platform_rect_l = pygame.Rect(615, 140, 25, 25)
+    platform_rect_r = pygame.Rect(866, 140, 25, 25)
 
     pygame.draw.rect(screen, pygame.Color('darkslategray'), platform_rect_l)
     font = pygame.font.Font('freesansbold.ttf', 32)
     text = font.render("<", True, WHITE, pygame.Color('darkslategray'))
     textRect = text.get_rect()
-    textRect.center = (platform_textRect.x - 40, 150)
+    textRect.center = (625, 150)
     screen.blit(text, textRect)
 
     pygame.draw.rect(screen, pygame.Color('darkslategray'), platform_rect_r)
     font = pygame.font.Font('freesansbold.ttf', 32)
     text = font.render(">", True, WHITE, pygame.Color('darkslategray'))
     textRect = text.get_rect()
-    textRect.center = (platform_textRect.x + platform_textRect.width + 40, 150)
+    textRect.center = (876, 150)
     screen.blit(text, textRect)
 
     for title in sorted_games:
         pygame.draw.rect(screen, pygame.Color('navy'), game_rects[title][0])
         screen.blit(game_rects[title][2], game_rects[title][1])
 
-    if new_entry_active:
+    if title_active:
         font = pygame.font.Font('freesansbold.ttf', 48)
         text = font.render(new_title, True, WHITE, pygame.Color('darkslategray'))
         textRect = text.get_rect()
