@@ -60,8 +60,8 @@ class Game:
         self.platform = platform
         self.finished = finished
         self.image_dup_count = 0
-        #if not os.path.exists("covers/" + name + ".jpg"):
-        #    self.get_image()
+        if not os.path.exists("covers/" + name + ".jpg"):
+            self.get_image()
         self.map_splits()
         self.is_finished()
         self.image = "covers/" + self.name + ".jpg"
@@ -95,7 +95,7 @@ class Game:
         self.get_image()
         
         
-    def get_image_new(self):
+    def get_image(self):
         response = requests.get("https://mobygames.com/search/quick?q=" + self.name)
         soup = bs(response.text, "html.parser")
         urls = soup.find_all('a', attrs={'href': re.compile("^https://")})
@@ -103,7 +103,6 @@ class Game:
         for i in urls:
             name = i["href"].replace("https://mobygames.com/game/", '')
             temp_name = self.name.replace("'", "-").replace("_", "-").translate(str.maketrans('', '', string.punctuation.replace("-",""))).replace(' ', '-').lower()
-            #print(name, platform_names[self.platform] + "/" + temp_name)
             if similar(name, platform_names[self.platform] + "/" + temp_name) > .8:
                 valid_url = i["href"]
                 #print("valid", valid_url)
@@ -123,10 +122,10 @@ class Game:
 		            return 1
 		            
         else:
-		        print("Game not found! Check spelling and platform.")
+		        print(self.name, "Game not found! Check spelling and platform.")
 
 #game = Game("God of War: Ragnarok", 20, "5/5/5/5", "PS5", True, comments="a")
-#game.get_image_new()
+#game.get_image()
 WIDTH = 1500
 HEIGHT = 700
 FPS = 30
@@ -414,7 +413,11 @@ while running:
 
                 selected_game.comments = comment_text
                 selected_game.finished = finished
-                os.rename("covers/" + selected_game.name + ".jpg", "covers/" + new_title + ".jpg")
+                try:
+                    os.rename("covers/" + selected_game.name + ".jpg", "covers/" + new_title + ".jpg")
+                except FileNotFoundError:
+                    selected_game.get_image()
+                    os.rename("covers/" + selected_game.name + ".jpg", "covers/" + new_title + ".jpg")
                 selected_game.name = new_title
                 game_list, sorted_games, game_rects = reload_structures(sorting_by)
 
@@ -537,6 +540,8 @@ while running:
                             except:
                                 comment_text = last_line
                 if title_active:
+                    if not isinstance(new_title, str):
+                        new_title = ""
                     if (event.key == pygame.K_v) and (event.mod & pygame.KMOD_CTRL):
                         if not isinstance(new_title, str):
                             new_title = ""
@@ -547,13 +552,14 @@ while running:
                         new_title_rect = pygame.Rect(WIDTH // 2 - (titleWidth * 3) // 2 - 5, 70, (titleWidth * 3) + 10, 60)
 
                     else:
-                        new_title += event.unicode
-                        font = pygame.font.Font('freesansbold.ttf', 16)
-                        text = font.render(new_title, True, pygame.Color('WHITE'), pygame.Color('darkslategray'))
-                        commentWidth = text.get_width()
-                        new_title_rect = pygame.Rect(WIDTH // 2 - (commentWidth * 3) // 2 - 5, 70, (commentWidth * 3) + 10, 60)
-                    if not isinstance(new_title, str):
-                        new_title = ""
+                    		if new_title == "New Game":
+                    				new_title = event.unicode
+                    		else:
+				                    new_title += event.unicode
+				                    font = pygame.font.Font('freesansbold.ttf', 16)
+				                    text = font.render(new_title, True, pygame.Color('WHITE'), pygame.Color('darkslategray'))
+				                    commentWidth = text.get_width()
+				                    new_title_rect = pygame.Rect(WIDTH // 2 - (commentWidth * 3) // 2 - 5, 70, (commentWidth * 3) + 10, 60)
 
         if event.type == MOUSEWHEEL:
             if event.y < 0 and game_rects[sorted_games[-1]][0].y + 30 > HEIGHT:
@@ -573,7 +579,12 @@ while running:
             pygame.draw.rect(screen, WHITE, new_title_rect)
     if title_active:
         pygame.draw.rect(screen, pygame.Color('chartreuse4'), new_title_rect)
-    image = pygame.image.load(selected_game.image)
+    try:
+    	image = pygame.image.load(selected_game.image)
+    except FileNotFoundError:
+    	selected_game.get_image()
+    	image = pygame.image.load(selected_game.image)
+    	
     width = image.get_width()
     height = image.get_height()
 
