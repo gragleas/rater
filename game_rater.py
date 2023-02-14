@@ -101,12 +101,12 @@ class Game:
         urls = soup.find_all('a', attrs={'href': re.compile("^https://")})
         valid_url = ''
         for i in urls:
-            name = i["href"].replace("https://www.mobygames.com/game/", '')
+            name = i["href"].replace("https://mobygames.com/game/", '')
             temp_name = self.name.replace("'", "-").replace("_", "-").translate(str.maketrans('', '', string.punctuation.replace("-",""))).replace(' ', '-').lower()
             #print(name, platform_names[self.platform] + "/" + temp_name)
             if similar(name, platform_names[self.platform] + "/" + temp_name) > .8:
                 valid_url = i["href"]
-                print("valid", valid_url)
+                #print("valid", valid_url)
                 break
         if valid_url:
 		        response = requests.get(valid_url)
