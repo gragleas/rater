@@ -153,7 +153,7 @@ temp_stars = [0, 0, 0, 0]
 
 ## initialize pygame and create window
 pygame.init()
-screen = pygame.display.set_mode((WIDTH, HEIGHT))
+screen = pygame.display.set_mode((WIDTH, HEIGHT), pygame.RESIZABLE)
 pygame.display.set_caption("Game Ratings")
 clock = pygame.time.Clock()  ## For syncing the FPS
 
@@ -322,8 +322,8 @@ comment_text = selected_game.comments
 
 delete_rect = pygame.Rect(WIDTH * .88 - 105, HEIGHT - 50, 212, 40)
 
-platform_rect_l = pygame.Rect(615, 140, 25, 25)
-platform_rect_r = pygame.Rect(866, 140, 25, 25)
+platform_rect_l = pygame.Rect(WIDTH // 2 - 130, 140, 25, 25)
+platform_rect_r = pygame.Rect(WIDTH // 2 + 108, 140, 25, 25)
 
 new_entry_rect = pygame.Rect(WIDTH * .88 - 97, HEIGHT - 100, 194, 40)
 
@@ -337,6 +337,53 @@ discard_rect = pygame.Rect(WIDTH * .88 - 150, HEIGHT - 150, 300, 40)
 save_rect = pygame.Rect(WIDTH * .88 - 130, HEIGHT - 200, 255, 40)
 
 while running:
+    WIDTH, HEIGHT = pygame.display.get_surface().get_size()
+    # Create rectangle objects for rating plus sign buttons
+    plus_list = []
+    for i in range(4):
+        rect = pygame.Rect(WIDTH * .93 - 10, (HEIGHT / 2) - 28 + (40 * i), 42, 35)
+        plus_list.append(rect)
+
+    # Create rectangle objects for rating minus sign buttons
+    minus_list = []
+    for i in range(4):
+        rect = pygame.Rect(WIDTH * .93 + 48, (HEIGHT / 2) - 28 + (40 * i), 36, 35)
+        minus_list.append(rect)
+
+    text = font.render(new_title, True, WHITE, COLOR3)
+    new_title_rect = text.get_rect()
+    new_title_rect.width = FONT5.size(new_title)[0]
+    new_title_rect.width += 12
+    new_title_rect.height += 36
+    new_title_rect.center = (WIDTH/2, 100)
+
+    font = FONT4
+    platform_text = font.render(selected_game.platform, True, WHITE, COLOR3)
+    platform_textRect = platform_text.get_rect()
+    platform_textRect.center = (WIDTH / 2, 150)
+
+
+    # Create rectangle objects for each of the buttons on the screen
+    comment_rect = pygame.Rect(WIDTH // 2 - 300, HEIGHT - 120, 600, 100)
+    comment_rect_2 = pygame.Rect(WIDTH // 2 - 298, HEIGHT - 118, 596, 96)
+
+    comment_text = selected_game.comments
+
+    delete_rect = pygame.Rect(WIDTH * .88 - 105, HEIGHT - 50, 212, 40)
+
+    platform_rect_l = pygame.Rect(WIDTH // 2 - 130, 140, 25, 25)
+    platform_rect_r = pygame.Rect(WIDTH // 2 + 108, 140, 25, 25)
+
+    new_entry_rect = pygame.Rect(WIDTH * .88 - 97, HEIGHT - 100, 194, 40)
+
+    alpha_rect = pygame.Rect(WIDTH // 2 - 129, 26, 158, 30)
+    rating_rect = pygame.Rect(WIDTH // 2 + 58, 26, 84, 30)
+
+    finished_rect = pygame.Rect(WIDTH * .94, 250, 45, 35)
+
+    discard_rect = pygame.Rect(WIDTH * .88 - 150, HEIGHT - 150, 300, 40)
+
+    save_rect = pygame.Rect(WIDTH * .88 - 130, HEIGHT - 200, 255, 40)
     # For each clock tick, process logic first:
     # Check for any keyboard/mouse events
     # Execute function related to mouse/keyboard click, scroll, or press
@@ -696,9 +743,9 @@ while running:
 
     draw_text_rect(None, None, FONT4, selected_game.platform, WHITE, COLOR3, (WIDTH / 2, 150))
 
-    draw_text_rect(COLOR3, platform_rect_l, FONT4, "<", WHITE, COLOR3, (625, 150))
+    draw_text_rect(COLOR3, platform_rect_l, FONT4, "<", WHITE, COLOR3, (WIDTH // 2 - 120, 150))
 
-    draw_text_rect(COLOR3, platform_rect_r, FONT4, ">", WHITE, COLOR3, (876, 150))
+    draw_text_rect(COLOR3, platform_rect_r, FONT4, ">", WHITE, COLOR3, (WIDTH // 2 + 120, 150))
 
     if title_active:
         draw_text_rect(None, None, FONT5, new_title, WHITE, COLOR3, (WIDTH / 2, 100))
@@ -757,19 +804,16 @@ while running:
             screen.blit(empty_star, (WIDTH * .83 + (temp_stars[n] * 25) + (j * 25), (HEIGHT / 2) - 25 + (40 * n)))
 
     score = sum(temp_stars) * 5
-
-    red = (100 - score) / 25
-
-    if score <= 75:
-        red = 255
-        if score <= 50:
-            green = 0
-        else:
-            green = ((75 - score) / 25) * 255
-    if score >= 75:
+    
+    green = 0
+    if score < 50:
+        green = 255 * (score / 100)
+    else:
         green = 255
-        red = ((100 - score) / 25) * 255
 
+    red = 255
+    if score > 50:
+        red = 255 * (abs(score - 100) / 50)
     color = (red, green, 0)
     drawArc(screen, color, (WIDTH * .88, 150), RADIUS, 10, 6.28 * (score / 100))
 
