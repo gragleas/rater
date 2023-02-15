@@ -143,6 +143,9 @@ COLOR3 = (27, 40, 56)
 COLOR4 = (42, 71, 94)
 COLOR5 = (199, 213, 224)
 
+alpha_toggle = False
+rating_toggle = False
+
 split_names = ["Absorption: ", "Gameplay Balance: ", "Environment: ", "Social/Story: "]
 
 ## initialize pygame and create window
@@ -194,7 +197,7 @@ def remove_data(dataframe, name):
     dataframe.to_csv("updated_data.csv", index=False)
     return (dataframe)
 
-def reload_structures(sort_by):
+def reload_structures(sort_by, reverse=False):
     data = pd.read_csv("updated_data.csv")
     new_game_list = {}
     new_sorted_list = []
@@ -206,6 +209,8 @@ def reload_structures(sort_by):
         new_sorted_list = sorted(new_game_list.keys())
     if sort_by == "rating":
         new_sorted_list = sorted(new_game_list.keys(), key=lambda x: new_game_list[x].rating)
+        new_sorted_list.reverse()
+    if reverse:
         new_sorted_list.reverse()
     for title in new_sorted_list:
         font = pygame.font.Font('freesansbold.ttf', 24)
@@ -341,30 +346,58 @@ while running:
                 game_list, sorted_games, game_rects = reload_structures(sorting_by)
 
             if alpha_rect.collidepoint(event.pos):
-                game_list, sorted_games, game_rects = reload_structures("alphabetical")
-                sorting_by = "alphabetical"
-                loaded = False
-                selected_game = game_list[sorted_games[0]]
-                new_title = selected_game.name
-                text = font.render(new_title, True, WHITE, COLOR3)
-                new_title_rect = text.get_rect()
-                new_title_rect.width *= 2
-                new_title_rect.width += 8
-                new_title_rect.height += 36
-                new_title_rect.center = (WIDTH/2, 100)
+                if sorting_by == "rating":
+                    game_list, sorted_games, game_rects = reload_structures("alphabetical")
+                    sorting_by = "alphabetical"
+                    loaded = False
+                    selected_game = game_list[sorted_games[0]]
+                    new_title = selected_game.name
+                    text = font.render(new_title, True, WHITE, COLOR3)
+                    new_title_rect = text.get_rect()
+                    new_title_rect.width *= 2
+                    new_title_rect.width += 16
+                    new_title_rect.height += 36
+                    new_title_rect.center = (WIDTH/2, 100)
+                else:
+                    alpha_toggle = not alpha_toggle
+                    game_list, sorted_games, game_rects = reload_structures("alphabetical", alpha_toggle)
+                    sorting_by = "alphabetical"
+                    loaded = False
+                    selected_game = game_list[sorted_games[0]]
+                    new_title = selected_game.name
+                    text = font.render(new_title, True, WHITE, COLOR3)
+                    new_title_rect = text.get_rect()
+                    new_title_rect.width *= 2
+                    new_title_rect.width += 16
+                    new_title_rect.height += 36
+                    new_title_rect.center = (WIDTH/2, 100)
 
             if rating_rect.collidepoint(event.pos):
-                game_list, sorted_games, game_rects = reload_structures("rating")
-                sorting_by = "rating"
-                loaded = False
-                selected_game = game_list[sorted_games[0]]
-                new_title = selected_game.name
-                text = font.render(new_title, True, WHITE, COLOR3)
-                new_title_rect = text.get_rect()
-                new_title_rect.width *= 2
-                new_title_rect.width += 8
-                new_title_rect.height += 36
-                new_title_rect.center = (WIDTH/2, 100)
+                if sorting_by == "alphabetical":
+                    game_list, sorted_games, game_rects = reload_structures("rating")
+                    sorting_by = "rating"
+                    loaded = False
+                    selected_game = game_list[sorted_games[0]]
+                    new_title = selected_game.name
+                    text = font.render(new_title, True, WHITE, COLOR3)
+                    new_title_rect = text.get_rect()
+                    new_title_rect.width *= 2
+                    new_title_rect.width += 8
+                    new_title_rect.height += 36
+                    new_title_rect.center = (WIDTH/2, 100)
+                else:
+                    rating_toggle = not rating_toggle
+                    game_list, sorted_games, game_rects = reload_structures("rating", rating_toggle)
+                    sorting_by = "rating"
+                    loaded = False
+                    selected_game = game_list[sorted_games[0]]
+                    new_title = selected_game.name
+                    text = font.render(new_title, True, WHITE, COLOR3)
+                    new_title_rect = text.get_rect()
+                    new_title_rect.width *= 2
+                    new_title_rect.width += 8
+                    new_title_rect.height += 36
+                    new_title_rect.center = (WIDTH/2, 100)
 
             if platform_rect_r.collidepoint(event.pos):
                 selected_game.platform = platforms[(platforms.index(selected_game.platform) + 1) % len(platforms)]
