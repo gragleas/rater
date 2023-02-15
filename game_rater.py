@@ -327,7 +327,7 @@ while running:
         if event.type == pygame.QUIT:
             pygame.quit()
             sys.exit()
-        if event.type == pygame.MOUSEBUTTONDOWN:
+        if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
             if comment_rect.collidepoint(event.pos):
                 comment_active = True
                 title_active = False
@@ -345,12 +345,26 @@ while running:
                 sorting_by = "alphabetical"
                 loaded = False
                 selected_game = game_list[sorted_games[0]]
+                new_title = selected_game.name
+                text = font.render(new_title, True, WHITE, COLOR3)
+                new_title_rect = text.get_rect()
+                new_title_rect.width *= 2
+                new_title_rect.width += 8
+                new_title_rect.height += 36
+                new_title_rect.center = (WIDTH/2, 100)
 
             if rating_rect.collidepoint(event.pos):
                 game_list, sorted_games, game_rects = reload_structures("rating")
                 sorting_by = "rating"
                 loaded = False
                 selected_game = game_list[sorted_games[0]]
+                new_title = selected_game.name
+                text = font.render(new_title, True, WHITE, COLOR3)
+                new_title_rect = text.get_rect()
+                new_title_rect.width *= 2
+                new_title_rect.width += 8
+                new_title_rect.height += 36
+                new_title_rect.center = (WIDTH/2, 100)
 
             if platform_rect_r.collidepoint(event.pos):
                 selected_game.platform = platforms[(platforms.index(selected_game.platform) + 1) % len(platforms)]
@@ -567,7 +581,7 @@ while running:
 				                    commentWidth = text.get_width()
 				                    new_title_rect = pygame.Rect(WIDTH // 2 - (commentWidth * 3) // 2 - 5, 70, (commentWidth * 3) + 10, 60)
 
-        if event.type == MOUSEWHEEL:
+        if event.type == MOUSEWHEEL and event.type != MOUSEBUTTONDOWN:
             if event.y < 0 and game_rects[sorted_games[-1]][0].y + 30 > HEIGHT:
                 for title in sorted_games:
                     game_rects[title][0] = game_rects[title][0].move(0, event.y * 30)
