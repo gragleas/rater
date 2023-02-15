@@ -137,6 +137,12 @@ GREEN = (0, 255, 0)
 BLUE = (0, 0, 255)
 GRAY = (125, 125, 125)
 
+COLOR1 = (23, 26, 33)
+COLOR2 = (102, 192, 244)
+COLOR3 = (27, 40, 56)
+COLOR4 = (42, 71, 94)
+COLOR5 = (199, 213, 224)
+
 split_names = ["Absorption: ", "Gameplay Balance: ", "Environment: ", "Social/Story: "]
 
 ## initialize pygame and create window
@@ -156,7 +162,7 @@ def drawArc(surf, color, center, radius, width, end_angle):
     pygame.draw.arc(surf, color, arc_rect, math.pi / 2, math.pi / 2 + end_angle, width)
 
 
-def blit_text(surface, text, pos, font, color=pygame.Color('WHITE')):
+def blit_text(surface, text, pos, font, color=WHITE):
     words = [word.split(' ') for word in text.splitlines()]  # 2D array where each row is a list of words.
     space = font.size(' ')[0]  # The width of a space.
     max_width, max_height = surface.get_size()
@@ -206,7 +212,7 @@ def reload_structures(sort_by):
         width, height = font.size(title)
         n = new_sorted_list.index(title)
         rect = pygame.Rect(23, 16 + (40 * n), width + 4, height + 4)
-        text = font.render(title, True, WHITE, pygame.Color('navy'))
+        text = font.render(title, True, WHITE, COLOR4)
         textRect = text.get_rect()
         textRect.center = (width // 2 + 25, 30 + (40 * n))
         new_game_rects[title] = [rect, textRect, text]
@@ -260,7 +266,7 @@ for title in sorted_games:
     n = sorted_games.index(title)
     rect = pygame.Rect(21, 14 + (40 * n), width + 8, height + 8)
 
-    text = font.render(title, True, WHITE, pygame.Color('navy'))
+    text = font.render(title, True, WHITE, COLOR4)
     textRect = text.get_rect()
     textRect.center = (width // 2 + 25, 30 + (40 * n))
 
@@ -291,7 +297,7 @@ new_entry_rect = pygame.Rect(WIDTH * .88 - 97, HEIGHT - 100, 194, 40)
 blank_game = Game("New Game", 0, "0/0/0/0", "PC", "N", "")
 
 new_title = selected_game.name
-text = font.render(new_title, True, pygame.Color('WHITE'), pygame.Color('darkslategray'))
+text = font.render(new_title, True, WHITE, COLOR3)
 new_title_rect = text.get_rect()
 new_title_rect.width *= 2
 new_title_rect.width += 8
@@ -301,7 +307,7 @@ new_title_rect.center = (WIDTH/2, 100)
 delete_rect = pygame.Rect(WIDTH * .88 - 105, HEIGHT - 50, 212, 40)
 
 font = pygame.font.Font('freesansbold.ttf', 32)
-platform_text = font.render(selected_game.platform, True, WHITE, pygame.Color('darkslategray'))
+platform_text = font.render(selected_game.platform, True, WHITE, COLOR3)
 platform_textRect = platform_text.get_rect()
 platform_textRect.center = (WIDTH / 2, 150)
 
@@ -381,7 +387,7 @@ while running:
                 new_entry_active = True
                 title_active = True
                 font = pygame.font.Font('freesansbold.ttf', 16)
-                text = font.render("New Game", True, pygame.Color('WHITE'), pygame.Color('darkslategray'))
+                text = font.render("New Game", True, WHITE, COLOR3)
                 commentWidth = text.get_width()
                 new_title_rect = pygame.Rect(WIDTH // 2 - (commentWidth * 3) // 2 - 5, 70, (commentWidth * 3) + 10, 60)
 
@@ -465,7 +471,7 @@ while running:
                     new_title = selected_game.name
                     comment_active = False
                     
-                    text = font.render(new_title, True, pygame.Color('WHITE'), pygame.Color('darkslategray'))
+                    text = font.render(new_title, True, WHITE, COLOR3)
                     new_title_rect = text.get_rect()
                     new_title_rect.width *= 2
                     new_title_rect.width += 8
@@ -489,7 +495,7 @@ while running:
                 if title_active:
                     if new_title == "New Game":
                         new_title = ""
-                        text = font.render(new_title, True, pygame.Color('WHITE'), pygame.Color('darkslategray'))
+                        text = font.render(new_title, True, WHITE, COLOR3)
                         commentWidth = text.get_width()
                         new_title_rect = text.get_rect()
                         new_title_rect.width *= 2
@@ -498,7 +504,7 @@ while running:
                         new_title_rect.center = (WIDTH/2, 100)
                     else:
                         new_title = new_title[:-1]
-                        text = font.render(new_title, True, pygame.Color('WHITE'), pygame.Color('darkslategray'))
+                        text = font.render(new_title, True, WHITE, COLOR3)
                         commentWidth = text.get_width()
                         new_title_rect = text.get_rect()
                         new_title_rect.width *= 2
@@ -518,17 +524,17 @@ while running:
                     font = pygame.font.Font('freesansbold.ttf', 16)
                     try:
                         split = comment_text.splitlines()[-1].split()
-                        text = font.render(comment_text.splitlines()[-1], True, pygame.Color('WHITE'), pygame.Color('darkslategray'))
+                        text = font.render(comment_text.splitlines()[-1], True, WHITE, COLOR3)
                     except IndexError:
                         split = comment_text.split()
-                        text = font.render(comment_text, True, pygame.Color('WHITE'), pygame.Color('darkslategray'))
+                        text = font.render(comment_text, True, WHITE, COLOR3)
 
                     commentWidth = text.get_rect().width
 
                     temp_text = ""
                     for q in range(len(split)):
                         temp_text += split[q]
-                        commentWidth = font.render(temp_text, True, pygame.Color('WHITE'), pygame.Color('darkslategray')).get_rect().width
+                        commentWidth = font.render(temp_text, True, COLOR3, COLOR3).get_rect().width
                         if commentWidth > (comment_rect.width - 180):
                             last_line = ' '.join(split[:q]) + '\n' + ' '.join(split[q:])
                             try:
@@ -547,7 +553,7 @@ while running:
                             new_title = ""
                         new_title += pygame.scrap.get("text/plain;charset=utf-8").decode("utf-8")
                         font = pygame.font.Font('freesansbold.ttf', 16)
-                        text = font.render(new_title, True, pygame.Color('WHITE'), pygame.Color('darkslategray'))
+                        text = font.render(new_title, True, WHITE, COLOR3)
                         titleWidth = text.get_width()
                         new_title_rect = pygame.Rect(WIDTH // 2 - (titleWidth * 3) // 2 - 5, 70, (titleWidth * 3) + 10, 60)
 
@@ -557,7 +563,7 @@ while running:
                     		else:
 				                    new_title += event.unicode
 				                    font = pygame.font.Font('freesansbold.ttf', 16)
-				                    text = font.render(new_title, True, pygame.Color('WHITE'), pygame.Color('darkslategray'))
+				                    text = font.render(new_title, True, WHITE, COLOR3)
 				                    commentWidth = text.get_width()
 				                    new_title_rect = pygame.Rect(WIDTH // 2 - (commentWidth * 3) // 2 - 5, 70, (commentWidth * 3) + 10, 60)
 
@@ -570,7 +576,7 @@ while running:
                 for title in sorted_games:
                     game_rects[title][0] = game_rects[title][0].move(0, event.y * 30)
                     game_rects[title][1] = game_rects[title][1].move(0, event.y * 30)
-    screen.fill(pygame.Color('darkslategray'))
+    screen.fill(COLOR3)
 
     if new_entry_active == True:
         if title_active:
@@ -602,7 +608,7 @@ while running:
     screen.blit(image, (WIDTH // 2 - round(width) // 2, HEIGHT // 2 - round(height) // 2))
 
     font = pygame.font.Font('freesansbold.ttf', 32)
-    platform_text = font.render(selected_game.platform, True, WHITE, pygame.Color('darkslategray'))
+    platform_text = font.render(selected_game.platform, True, WHITE, COLOR3)
     platform_textRect = platform_text.get_rect()
     platform_textRect.center = (WIDTH / 2, 150)
     screen.blit(platform_text, platform_textRect)
@@ -610,34 +616,34 @@ while running:
     platform_rect_l = pygame.Rect(615, 140, 25, 25)
     platform_rect_r = pygame.Rect(866, 140, 25, 25)
 
-    pygame.draw.rect(screen, pygame.Color('darkslategray'), platform_rect_l)
+    pygame.draw.rect(screen, COLOR3, platform_rect_l)
     font = pygame.font.Font('freesansbold.ttf', 32)
-    text = font.render("<", True, WHITE, pygame.Color('darkslategray'))
+    text = font.render("<", True, WHITE, COLOR3)
     textRect = text.get_rect()
     textRect.center = (625, 150)
     screen.blit(text, textRect)
 
-    pygame.draw.rect(screen, pygame.Color('darkslategray'), platform_rect_r)
+    pygame.draw.rect(screen, COLOR3, platform_rect_r)
     font = pygame.font.Font('freesansbold.ttf', 32)
-    text = font.render(">", True, WHITE, pygame.Color('darkslategray'))
+    text = font.render(">", True, WHITE, COLOR3)
     textRect = text.get_rect()
     textRect.center = (876, 150)
     screen.blit(text, textRect)
 
     for title in sorted_games:
-        pygame.draw.rect(screen, pygame.Color('navy'), game_rects[title][0])
+        pygame.draw.rect(screen, COLOR4, game_rects[title][0])
         screen.blit(game_rects[title][2], game_rects[title][1])
 
     if title_active:
         font = pygame.font.Font('freesansbold.ttf', 48)
-        text = font.render(new_title, True, WHITE, pygame.Color('darkslategray'))
+        text = font.render(new_title, True, WHITE, COLOR3)
         textRect = text.get_rect()
         textRect.center = (WIDTH / 2, 100)
         screen.blit(text, textRect)
 
     else:
         font = pygame.font.Font('freesansbold.ttf', 48)
-        text = font.render(selected_game.name, True, WHITE, pygame.Color('darkslategray'))
+        text = font.render(selected_game.name, True, WHITE, COLOR3)
         textRect = text.get_rect()
         textRect.center = (WIDTH / 2, 100)
         screen.blit(text, textRect)
@@ -645,7 +651,7 @@ while running:
     for rect in plus_list:
         pygame.draw.rect(screen, pygame.Color('GREEN'), rect)
         font = pygame.font.Font('freesansbold.ttf', 32)
-        text = font.render(" + ", True, pygame.Color('GREEN'), pygame.Color('darkslategray'))
+        text = font.render(" + ", True, pygame.Color('GREEN'), COLOR3)
         textRect = text.get_rect()
         textRect.center = (rect.x + 20, rect.y + 18)
         screen.blit(text, textRect)
@@ -653,7 +659,7 @@ while running:
     for rect in minus_list:
         pygame.draw.rect(screen, pygame.Color('RED'), rect)
         font = pygame.font.Font('freesansbold.ttf', 32)
-        text = font.render(" - ", True, pygame.Color('RED'), pygame.Color('darkslategray'))
+        text = font.render(" - ", True, pygame.Color('RED'), COLOR3)
         textRect = text.get_rect()
         textRect.center = (rect.x + 18, rect.y + 18)
         screen.blit(text, textRect)
@@ -661,13 +667,13 @@ while running:
     if comment_active:
         comment_color = pygame.Color('chartreuse4')
     else:
-        comment_color = pygame.Color('WHITE')
+        comment_color = WHITE
 
     pygame.draw.rect(screen, comment_color, comment_rect)
-    pygame.draw.rect(screen, pygame.Color('darkslategray'), comment_rect_2)
+    pygame.draw.rect(screen, COLOR3, comment_rect_2)
 
     font = pygame.font.Font('freesansbold.ttf', 16)
-    text = font.render("Comments:", True, pygame.Color('WHITE'), pygame.Color('darkslategray'))
+    text = font.render("Comments:", True, WHITE, COLOR3)
     textRect = text.get_rect()
     textRect.center = (comment_rect.x + textRect.width // 2, comment_rect.y - 20)
     screen.blit(text, textRect)
@@ -700,7 +706,7 @@ while running:
         empty_star = pygame.transform.scale(empty_star, (30, 30))
 
         font = pygame.font.Font('freesansbold.ttf', 24)
-        text = font.render(name, True, WHITE, pygame.Color('darkslategray'))
+        text = font.render(name, True, WHITE, COLOR3)
         textRect = text.get_rect()
         textRect.center = (WIDTH * .75, (HEIGHT / 2) - 8 + (40 * n))
         screen.blit(text, textRect)
@@ -729,13 +735,13 @@ while running:
     drawArc(screen, color, (WIDTH * .88, 150), RADIUS, 10, 6.28 * (score / 100))
 
     font = pygame.font.Font('freesansbold.ttf', 48)
-    text = font.render(str(sum(temp_stars)), True, WHITE, pygame.Color('darkslategray'))
+    text = font.render(str(sum(temp_stars)), True, WHITE, COLOR3)
     textRect = text.get_rect()
     textRect.center = (WIDTH * .88, 150)
     screen.blit(text, textRect)
 
     save_rect = pygame.Rect(WIDTH * .88 - 130, HEIGHT - 200, 255, 40)
-    pygame.draw.rect(screen, WHITE, save_rect)
+    pygame.draw.rect(screen, COLOR2, save_rect)
 
     font = pygame.font.Font('freesansbold.ttf', 32)
     text = font.render(" Save Changes ", True, WHITE, pygame.Color("chartreuse4"))
@@ -744,7 +750,7 @@ while running:
     screen.blit(text, textRect)
 
     discard_rect = pygame.Rect(WIDTH * .88 - 150, HEIGHT - 150, 300, 40)
-    pygame.draw.rect(screen, WHITE, discard_rect)
+    pygame.draw.rect(screen, COLOR2, discard_rect)
 
     font = pygame.font.Font('freesansbold.ttf', 32)
     text = font.render(" Discard Changes ", True, WHITE, pygame.Color("firebrick3"))
@@ -755,30 +761,30 @@ while running:
     finished_rect = pygame.Rect(WIDTH * .94, 250, 45, 35)
     pygame.draw.rect(screen, WHITE, finished_rect)
 
-    pygame.draw.rect(screen, WHITE, new_entry_rect)
+    pygame.draw.rect(screen, COLOR2, new_entry_rect)
     font = pygame.font.Font('freesansbold.ttf', 32)
-    text = font.render(" New Game ", True, WHITE, BLUE)
+    text = font.render(" New Game ", True, WHITE, COLOR4)
     textRect = text.get_rect()
     textRect.center = (new_entry_rect.x + new_entry_rect.width / 2, new_entry_rect.y + new_entry_rect.height / 2)
     screen.blit(text, textRect)
 
     font = pygame.font.Font('freesansbold.ttf', 32)
     if finished:
-        text = font.render(" X ", True, pygame.Color('chartreuse2'), pygame.Color('darkslategray'))
+        text = font.render(" X ", True, pygame.Color('chartreuse2'), COLOR3)
     else:
-        text = font.render("    ", True, WHITE, pygame.Color('darkslategray'))
+        text = font.render("    ", True, WHITE, COLOR3)
     textRect = text.get_rect()
     textRect.center = (finished_rect.x + finished_rect.width / 2, finished_rect.y + finished_rect.height / 2)
     screen.blit(text, textRect)
 
     font = pygame.font.Font('freesansbold.ttf', 32)
-    text = font.render("Finished?", True, WHITE, pygame.Color('darkslategray'))
+    text = font.render("Finished?", True, WHITE, COLOR3)
     textRect = text.get_rect()
     textRect.center = (finished_rect.x - textRect.width / 2 - 30, finished_rect.y + finished_rect.height / 2)
     screen.blit(text, textRect)
 
     layer1 = pygame.Surface((comment_rect.width, comment_rect.height))
-    layer1.fill(pygame.Color('darkslategray'))
+    layer1.fill(COLOR3)
 
     font = pygame.font.Font('freesansbold.ttf', 20)
     if comment_text != "a" and comment_text != "a|":
@@ -787,7 +793,7 @@ while running:
         except:
             pass
 
-    pygame.draw.rect(screen, WHITE, delete_rect)
+    pygame.draw.rect(screen, COLOR2, delete_rect)
     font = pygame.font.Font('freesansbold.ttf', 32)
     text = font.render("Delete Game", True, WHITE, RED)
     textRect = text.get_rect()
@@ -795,34 +801,34 @@ while running:
     screen.blit(text, textRect)
 
     font = pygame.font.Font('freesansbold.ttf', 24)
-    text = font.render("Sort By:", True, WHITE, pygame.Color('darkslategray'))
+    text = font.render("Sort By:", True, WHITE, COLOR3)
     textRect = text.get_rect()
     textRect.center = (WIDTH // 2 - 200, 40)
     screen.blit(text, textRect)
 
     if sorting_by == "alphabetical":
-        pygame.draw.rect(screen, pygame.Color('chartreuse2'), alpha_rect)
+        pygame.draw.rect(screen, COLOR2, alpha_rect)
     else:
         pygame.draw.rect(screen, WHITE, alpha_rect)
     font = pygame.font.Font('freesansbold.ttf', 24)
-    text = font.render("Alphabetical", True, WHITE, pygame.Color('darkslategray'))
+    text = font.render("Alphabetical", True, WHITE, COLOR3)
     textRect = text.get_rect()
     textRect.center = (WIDTH // 2 - 50, 40)
     screen.blit(text, textRect)
 
     if sorting_by == "rating":
-        pygame.draw.rect(screen, pygame.Color('chartreuse2'), rating_rect)
+        pygame.draw.rect(screen, COLOR2, rating_rect)
     else:
         pygame.draw.rect(screen, WHITE, rating_rect)
     font = pygame.font.Font('freesansbold.ttf', 24)
-    text = font.render("Rating", True, WHITE, pygame.Color('darkslategray'))
+    text = font.render("Rating", True, WHITE, COLOR3)
     textRect = text.get_rect()
     textRect.center = (WIDTH // 2 + 100, 40)
     screen.blit(text, textRect)
 
-    pygame.draw.rect(screen, WHITE, next_image_rect)
+    pygame.draw.rect(screen, COLOR2, next_image_rect)
     font = pygame.font.Font('freesansbold.ttf', 24)
-    text = font.render("Update Image?", True, WHITE, pygame.Color('darkslategray'))
+    text = font.render("Update Image?", True, WHITE, COLOR3)
     textRect = text.get_rect()
     textRect.center = (WIDTH - 180, 40)
     screen.blit(text, textRect)
