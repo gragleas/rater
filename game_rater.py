@@ -59,7 +59,6 @@ class Game:
         self.splits = splits
         self.platform = platform
         self.finished = finished
-        self.image_dup_count = 0
         if not os.path.exists("covers/" + name + ".jpg"):
             self.get_image()
         self.map_splits()
@@ -90,11 +89,6 @@ class Game:
         data.loc[data['Title'] == self.name, param] = new_value
         data.to_csv("updated_data.csv", index=False)
 
-    def next_image(self):
-        self.image_dup_count += 1
-        self.get_image()
-        
-        
     def get_image(self):
         response = requests.get("https://mobygames.com/search/quick?q=" + self.name)
         soup = bs(response.text, "html.parser")
@@ -105,7 +99,6 @@ class Game:
             temp_name = self.name.replace("'", "-").replace("_", "-").translate(str.maketrans('', '', string.punctuation.replace("-",""))).replace(' ', '-').lower()
             if similar(name, platform_names[self.platform] + "/" + temp_name) > .8:
                 valid_url = i["href"]
-                #print("valid", valid_url)
                 break
         if valid_url:
 		        response = requests.get(valid_url)
@@ -124,11 +117,14 @@ class Game:
         else:
 		        print(self.name, "Game not found! Check spelling and platform.")
 
-#game = Game("God of War: Ragnarok", 20, "5/5/5/5", "PS5", True, comments="a")
-#game.get_image()
+# Global Params
 WIDTH = 1500
 HEIGHT = 700
 FPS = 30
+DEFAULT_IMAGE_SIZE = (300, 300)
+RADIUS = 70
+split_names = ["Absorption: ", "Gameplay Balance: ", "Environment: ", "Social/Story: "]
+
 # Define Colors 
 WHITE = (255, 255, 255)
 BLACK = (0, 0, 0)
@@ -143,20 +139,30 @@ COLOR3 = (27, 40, 56)
 COLOR4 = (42, 71, 94)
 COLOR5 = (199, 213, 224)
 
+# Initial States
 alpha_toggle = False
 rating_toggle = False
-
-split_names = ["Absorption: ", "Gameplay Balance: ", "Environment: ", "Social/Story: "]
+scroll_count = 0
+running = True
+new_entry_active = False
+title_active = True
+sorting_by = "rating"
+comment_active = False
+loaded = False
+temp_stars = [0, 0, 0, 0]
 
 ## initialize pygame and create window
 pygame.init()
-
-#pygame.scrap.init()
-#pygame.scrap.set_mode(SCRAP_CLIPBOARD)
-
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption("Game Ratings")
 clock = pygame.time.Clock()  ## For syncing the FPS
+
+# Define Fonts
+FONT1 = pygame.font.Font('freesansbold.ttf', 16)
+FONT2 = pygame.font.Font('freesansbold.ttf', 20)
+FONT3 = pygame.font.Font('freesansbold.ttf', 24)
+FONT4 = pygame.font.Font('freesansbold.ttf', 32)
+FONT5 = pygame.font.Font('freesansbold.ttf', 48)
 
     
 def drawArc(surf, color, center, radius, width, end_angle):
@@ -213,7 +219,7 @@ def reload_structures(sort_by, reverse=False):
     if reverse:
         new_sorted_list.reverse()
     for title in new_sorted_list:
-        font = pygame.font.Font('freesansbold.ttf', 24)
+        font = FONT3
         width, height = font.size(title)
         n = new_sorted_list.index(title)
         rect = pygame.Rect(23, 16 + (40 * n), width + 4, height + 4)
@@ -224,25 +230,22 @@ def reload_structures(sort_by, reverse=False):
 
 
     return (new_game_list, new_sorted_list, new_game_rects)
+    
+    
+def draw_text_rect(rect_color, rectangle, font, text, text_color, text_background, center):
+    if rect_color is not None and rectangle is not None:
+        pygame.draw.rect(screen, rect_color, rectangle)
+    text = font.render(text, True, text_color, text_background)
+    textRect = text.get_rect()
+    textRect.center = center
+    screen.blit(text, textRect)
 
-
-base_font = pygame.font.Font(None, 32)
-
-input_rect = pygame.Rect(200, 200, 140, 32)
 color_active = pygame.Color('chartreuse1')
 color_passive = pygame.Color('chartreuse4')
 color = color_passive
-clock = pygame.time.Clock()
-DEFAULT_IMAGE_SIZE = (300, 300)
-RADIUS = 70
-scroll_count = 0
-
-active = False
 
 ## Game loop
-running = True
-new_entry_active = False
-title_active = True
+# Read in data from CSV, if NaN, create empty CSV
 try:
     data = pd.read_csv("updated_data.csv")
 except:
@@ -254,18 +257,21 @@ except:
 
 game_list = {}
 
+# Populate game dictionary with CSV data
 for index, row in data.iterrows():
     game = Game(row[0], row[1], row[2], row[3], row[4], row[5])
     if not isinstance(row[5], str):
         game.comments = "a"
     game_list[row[0]] = game
 
+# List of game names for sorting purposes. Either alphabetical or by rating
 sorted_games = sorted(game_list.keys(), key=lambda x: game_list[x].rating)
 sorted_games.reverse()
-game_rects = {}
 
+# Define list of the pygame.rect objects for each game in the list of games
+game_rects = {}
 for title in sorted_games:
-    font = pygame.font.Font('freesansbold.ttf', 24)
+    font = FONT3
     width, height = font.size(title)
 
     n = sorted_games.index(title)
@@ -277,85 +283,95 @@ for title in sorted_games:
 
     game_rects[title] = [rect, textRect, text]
 
+# Create rectangle objects for rating plus sign buttons
 plus_list = []
 for i in range(4):
-    rect = pygame.Rect(WIDTH * .93 - 10, (HEIGHT / 2) - 28 + (40 * i), 41, 35)
+    rect = pygame.Rect(WIDTH * .93 - 10, (HEIGHT / 2) - 28 + (40 * i), 42, 35)
     plus_list.append(rect)
 
+# Create rectangle objects for rating minus sign buttons
 minus_list = []
 for i in range(4):
     rect = pygame.Rect(WIDTH * .93 + 48, (HEIGHT / 2) - 28 + (40 * i), 36, 35)
     minus_list.append(rect)
 
-temp_stars = [0, 0, 0, 0]
-loaded = False
+# Select the first game to be rendered from the top of the list
+# Initialize the name, finished status, and platform of the selected game
 selected_game = game_list[sorted_games[0]]
 finished = selected_game.finished
-
-comment_rect = pygame.Rect(WIDTH // 2 - 300, HEIGHT - 120, 600, 100)
-comment_rect_2 = pygame.Rect(WIDTH // 2 - 298, HEIGHT - 118, 596, 96)
-
-comment_active = False
-comment_text = selected_game.comments
-
-new_entry_rect = pygame.Rect(WIDTH * .88 - 97, HEIGHT - 100, 194, 40)
-blank_game = Game("New Game", 0, "0/0/0/0", "PC", "N", "")
 
 new_title = selected_game.name
 text = font.render(new_title, True, WHITE, COLOR3)
 new_title_rect = text.get_rect()
-new_title_rect.width *= 2
-new_title_rect.width += 8
+new_title_rect.width = FONT5.size(new_title)[0]
+new_title_rect.width += 12
 new_title_rect.height += 36
 new_title_rect.center = (WIDTH/2, 100)
 
-delete_rect = pygame.Rect(WIDTH * .88 - 105, HEIGHT - 50, 212, 40)
-
-font = pygame.font.Font('freesansbold.ttf', 32)
+font = FONT4
 platform_text = font.render(selected_game.platform, True, WHITE, COLOR3)
 platform_textRect = platform_text.get_rect()
 platform_textRect.center = (WIDTH / 2, 150)
 
+
+# Create rectangle objects for each of the buttons on the screen
+comment_rect = pygame.Rect(WIDTH // 2 - 300, HEIGHT - 120, 600, 100)
+comment_rect_2 = pygame.Rect(WIDTH // 2 - 298, HEIGHT - 118, 596, 96)
+
+comment_text = selected_game.comments
+
+delete_rect = pygame.Rect(WIDTH * .88 - 105, HEIGHT - 50, 212, 40)
+
 platform_rect_l = pygame.Rect(615, 140, 25, 25)
 platform_rect_r = pygame.Rect(866, 140, 25, 25)
+
+new_entry_rect = pygame.Rect(WIDTH * .88 - 97, HEIGHT - 100, 194, 40)
 
 alpha_rect = pygame.Rect(WIDTH // 2 - 129, 26, 158, 30)
 rating_rect = pygame.Rect(WIDTH // 2 + 58, 26, 84, 30)
 
-next_image_rect = pygame.Rect(WIDTH - 271, 25, 182, 30)
+finished_rect = pygame.Rect(WIDTH * .94, 250, 45, 35)
 
-sorting_by = "rating"
+discard_rect = pygame.Rect(WIDTH * .88 - 150, HEIGHT - 150, 300, 40)
+
+save_rect = pygame.Rect(WIDTH * .88 - 130, HEIGHT - 200, 255, 40)
 
 while running:
+    # For each clock tick, process logic first:
+    # Check for any keyboard/mouse events
+    # Execute function related to mouse/keyboard click, scroll, or press
+    # Draw the updated state
     clock.tick(FPS)
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             pygame.quit()
             sys.exit()
+        # Left Click Events
         if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+            # If comment box is clicked, set the box to active and load the game's comments to be
+            # viewed or edited. If already active when clicked, deactivate. Comment active and title
+            # active are mutually exclusive so that text isn't typed to both at the same time.
             if comment_rect.collidepoint(event.pos):
                 comment_active = True
                 title_active = False
                 comment_text = selected_game.comments
             else:
                 comment_active = False
-
-            if next_image_rect.collidepoint(event.pos):
-                selected_game.next_image()
-                loaded = False
-                game_list, sorted_games, game_rects = reload_structures(sorting_by)
-
+            # If alphabetical is clicked, reload data structures to be sorted alphabetically.
+            # If sorting was already done alphabetically, reverse the order.
+            # After sorting, select the first game in the list and render the title appropriately
             if alpha_rect.collidepoint(event.pos):
                 if sorting_by == "rating":
                     game_list, sorted_games, game_rects = reload_structures("alphabetical")
                     sorting_by = "alphabetical"
                     loaded = False
                     selected_game = game_list[sorted_games[0]]
+                    comment_text = selected_game.comments
                     new_title = selected_game.name
                     text = font.render(new_title, True, WHITE, COLOR3)
                     new_title_rect = text.get_rect()
-                    new_title_rect.width *= 2
-                    new_title_rect.width += 16
+                    new_title_rect.width = FONT5.size(new_title)[0]
+                    new_title_rect.width += 12
                     new_title_rect.height += 36
                     new_title_rect.center = (WIDTH/2, 100)
                 else:
@@ -364,25 +380,29 @@ while running:
                     sorting_by = "alphabetical"
                     loaded = False
                     selected_game = game_list[sorted_games[0]]
+                    comment_text = selected_game.comments
                     new_title = selected_game.name
                     text = font.render(new_title, True, WHITE, COLOR3)
                     new_title_rect = text.get_rect()
-                    new_title_rect.width *= 2
-                    new_title_rect.width += 16
+                    new_title_rect.width = FONT5.size(new_title)[0]
+                    new_title_rect.width += 12
                     new_title_rect.height += 36
                     new_title_rect.center = (WIDTH/2, 100)
-
+                    
+            # Same as the alphabetical section above. Sorts by rating instead of alphabetically
+            # and reverses the order if already selected. Selects the first game and renders the title
             if rating_rect.collidepoint(event.pos):
                 if sorting_by == "alphabetical":
                     game_list, sorted_games, game_rects = reload_structures("rating")
                     sorting_by = "rating"
                     loaded = False
                     selected_game = game_list[sorted_games[0]]
+                    comment_text = selected_game.comments
                     new_title = selected_game.name
                     text = font.render(new_title, True, WHITE, COLOR3)
                     new_title_rect = text.get_rect()
-                    new_title_rect.width *= 2
-                    new_title_rect.width += 8
+                    new_title_rect.width = FONT5.size(new_title)[0]
+                    new_title_rect.width += 12
                     new_title_rect.height += 36
                     new_title_rect.center = (WIDTH/2, 100)
                 else:
@@ -391,20 +411,26 @@ while running:
                     sorting_by = "rating"
                     loaded = False
                     selected_game = game_list[sorted_games[0]]
+                    comment_text = selected_game.comments
                     new_title = selected_game.name
                     text = font.render(new_title, True, WHITE, COLOR3)
                     new_title_rect = text.get_rect()
-                    new_title_rect.width *= 2
-                    new_title_rect.width += 8
+                    new_title_rect.width = FONT5.size(new_title)[0]
+                    new_title_rect.width += 12
                     new_title_rect.height += 36
                     new_title_rect.center = (WIDTH/2, 100)
-
+            
+            # If either of the arrow keys adjacent to the platform are clicked, switch the currently
+            # selected game platform
             if platform_rect_r.collidepoint(event.pos):
                 selected_game.platform = platforms[(platforms.index(selected_game.platform) + 1) % len(platforms)]
 
             if platform_rect_l.collidepoint(event.pos):
                 selected_game.platform = platforms[(platforms.index(selected_game.platform) - 1) % len(platforms)]
 
+            # If the delete game button is pressed, remove the entry from the csv file
+            # Remove the entry from all of the data structures. If this causes the data
+            # Structures to be empty, populate with a blank game to be edited
             if delete_rect.collidepoint(event.pos):
                 data = remove_data(data, selected_game.name)
                 selected_game = game_list[sorted_games[0]]
@@ -423,6 +449,8 @@ while running:
                     selected_game = game_list[sorted_games[0]]
                 loaded = False
 
+            # If the new entry button is clicked, create a blank game template to be filled out
+            # Reset all of the titles, comments, ratings, booleans, etc.
             if new_entry_rect.collidepoint(event.pos):
                 selected_game = Game("New Game", 0, "0/0/0/0", "PC", "N", "")
                 new_title = "New Game"
@@ -433,11 +461,12 @@ while running:
                 finished = False
                 new_entry_active = True
                 title_active = True
-                font = pygame.font.Font('freesansbold.ttf', 16)
+                font = FONT1
                 text = font.render("New Game", True, WHITE, COLOR3)
                 commentWidth = text.get_width()
                 new_title_rect = pygame.Rect(WIDTH // 2 - (commentWidth * 3) // 2 - 5, 70, (commentWidth * 3) + 10, 60)
 
+            
             if new_title_rect.collidepoint(event.pos) and new_entry_active:
                 title_active = True
                 comment_active = False
@@ -499,6 +528,13 @@ while running:
                     new_entry_active = False
                 else:
                     selected_game = game_list[selected_game.name]
+                new_title = selected_game.name
+                text = font.render(new_title, True, WHITE, COLOR3)
+                new_title_rect = text.get_rect()
+                new_title_rect.width = FONT5.size(new_title)[0]
+                new_title_rect.width += 12
+                new_title_rect.height += 36
+                new_title_rect.center = (WIDTH/2, 100)
                 loaded = False
 
             if finished_rect.collidepoint(event.pos):
@@ -520,8 +556,8 @@ while running:
                     
                     text = font.render(new_title, True, WHITE, COLOR3)
                     new_title_rect = text.get_rect()
-                    new_title_rect.width *= 2
-                    new_title_rect.width += 8
+                    new_title_rect.width = FONT5.size(new_title)[0]
+                    new_title_rect.width += 12
                     new_title_rect.height += 36
                     new_title_rect.center = (WIDTH/2, 100)
 
@@ -545,8 +581,8 @@ while running:
                         text = font.render(new_title, True, WHITE, COLOR3)
                         commentWidth = text.get_width()
                         new_title_rect = text.get_rect()
-                        new_title_rect.width *= 2
-                        new_title_rect.width += 8
+                        new_title_rect.width = FONT5.size(new_title)[0]
+                        new_title_rect.width += 12
                         new_title_rect.height += 36
                         new_title_rect.center = (WIDTH/2, 100)
                     else:
@@ -554,8 +590,8 @@ while running:
                         text = font.render(new_title, True, WHITE, COLOR3)
                         commentWidth = text.get_width()
                         new_title_rect = text.get_rect()
-                        new_title_rect.width *= 2
-                        new_title_rect.width += 8
+                        new_title_rect.width = FONT5.size(new_title)[0]
+                        new_title_rect.width += 12
                         new_title_rect.height += 36
                         new_title_rect.center = (WIDTH/2, 100)
                 
@@ -568,7 +604,7 @@ while running:
                     if comment_text == "a" or comment_text == "a|":
                         comment_text = comment_text.replace("a", '', 1)
                     comment_text += event.unicode
-                    font = pygame.font.Font('freesansbold.ttf', 16)
+                    font = FONT1
                     try:
                         split = comment_text.splitlines()[-1].split()
                         text = font.render(comment_text.splitlines()[-1], True, WHITE, COLOR3)
@@ -599,7 +635,7 @@ while running:
                         if not isinstance(new_title, str):
                             new_title = ""
                         new_title += pygame.scrap.get("text/plain;charset=utf-8").decode("utf-8")
-                        font = pygame.font.Font('freesansbold.ttf', 16)
+                        font = FONT1
                         text = font.render(new_title, True, WHITE, COLOR3)
                         titleWidth = text.get_width()
                         new_title_rect = pygame.Rect(WIDTH // 2 - (titleWidth * 3) // 2 - 5, 70, (titleWidth * 3) + 10, 60)
@@ -609,7 +645,7 @@ while running:
                     				new_title = event.unicode
                     		else:
 				                    new_title += event.unicode
-				                    font = pygame.font.Font('freesansbold.ttf', 16)
+				                    font = FONT1
 				                    text = font.render(new_title, True, WHITE, COLOR3)
 				                    commentWidth = text.get_width()
 				                    new_title_rect = pygame.Rect(WIDTH // 2 - (commentWidth * 3) // 2 - 5, 70, (commentWidth * 3) + 10, 60)
@@ -623,15 +659,19 @@ while running:
                 for title in sorted_games:
                     game_rects[title][0] = game_rects[title][0].move(0, event.y * 30)
                     game_rects[title][1] = game_rects[title][1].move(0, event.y * 30)
+                    
+                    
     screen.fill(COLOR3)
-
-    if new_entry_active == True:
-        if title_active:
-            pygame.draw.rect(screen, pygame.Color('chartreuse4'), new_title_rect)
-        else:
-            pygame.draw.rect(screen, WHITE, new_title_rect)
+    
+    for title in sorted_games:
+        pygame.draw.rect(screen, COLOR4, game_rects[title][0])
+        screen.blit(game_rects[title][2], game_rects[title][1])
+        
     if title_active:
         pygame.draw.rect(screen, pygame.Color('chartreuse4'), new_title_rect)
+    else:
+        if new_entry_active == True:
+            pygame.draw.rect(screen, WHITE, new_title_rect)
     try:
     	image = pygame.image.load(selected_game.image)
     except FileNotFoundError:
@@ -654,62 +694,23 @@ while running:
     image = pygame.transform.scale(image, (round(width), round(height)))
     screen.blit(image, (WIDTH // 2 - round(width) // 2, HEIGHT // 2 - round(height) // 2))
 
-    font = pygame.font.Font('freesansbold.ttf', 32)
-    platform_text = font.render(selected_game.platform, True, WHITE, COLOR3)
-    platform_textRect = platform_text.get_rect()
-    platform_textRect.center = (WIDTH / 2, 150)
-    screen.blit(platform_text, platform_textRect)
+    draw_text_rect(None, None, FONT4, selected_game.platform, WHITE, COLOR3, (WIDTH / 2, 150))
 
-    platform_rect_l = pygame.Rect(615, 140, 25, 25)
-    platform_rect_r = pygame.Rect(866, 140, 25, 25)
+    draw_text_rect(COLOR3, platform_rect_l, FONT4, "<", WHITE, COLOR3, (625, 150))
 
-    pygame.draw.rect(screen, COLOR3, platform_rect_l)
-    font = pygame.font.Font('freesansbold.ttf', 32)
-    text = font.render("<", True, WHITE, COLOR3)
-    textRect = text.get_rect()
-    textRect.center = (625, 150)
-    screen.blit(text, textRect)
-
-    pygame.draw.rect(screen, COLOR3, platform_rect_r)
-    font = pygame.font.Font('freesansbold.ttf', 32)
-    text = font.render(">", True, WHITE, COLOR3)
-    textRect = text.get_rect()
-    textRect.center = (876, 150)
-    screen.blit(text, textRect)
-
-    for title in sorted_games:
-        pygame.draw.rect(screen, COLOR4, game_rects[title][0])
-        screen.blit(game_rects[title][2], game_rects[title][1])
+    draw_text_rect(COLOR3, platform_rect_r, FONT4, ">", WHITE, COLOR3, (876, 150))
 
     if title_active:
-        font = pygame.font.Font('freesansbold.ttf', 48)
-        text = font.render(new_title, True, WHITE, COLOR3)
-        textRect = text.get_rect()
-        textRect.center = (WIDTH / 2, 100)
-        screen.blit(text, textRect)
+        draw_text_rect(None, None, FONT5, new_title, WHITE, COLOR3, (WIDTH / 2, 100))
 
     else:
-        font = pygame.font.Font('freesansbold.ttf', 48)
-        text = font.render(selected_game.name, True, WHITE, COLOR3)
-        textRect = text.get_rect()
-        textRect.center = (WIDTH / 2, 100)
-        screen.blit(text, textRect)
+        draw_text_rect(None, None, FONT5, new_title, WHITE, COLOR3, (WIDTH / 2, 100))
 
     for rect in plus_list:
-        pygame.draw.rect(screen, pygame.Color('GREEN'), rect)
-        font = pygame.font.Font('freesansbold.ttf', 32)
-        text = font.render(" + ", True, pygame.Color('GREEN'), COLOR3)
-        textRect = text.get_rect()
-        textRect.center = (rect.x + 20, rect.y + 18)
-        screen.blit(text, textRect)
+        draw_text_rect(pygame.Color('GREEN'), rect, FONT4, " + ", pygame.Color('GREEN'), COLOR3, (rect.x + 20, rect.y + 17))
 
     for rect in minus_list:
-        pygame.draw.rect(screen, pygame.Color('RED'), rect)
-        font = pygame.font.Font('freesansbold.ttf', 32)
-        text = font.render(" - ", True, pygame.Color('RED'), COLOR3)
-        textRect = text.get_rect()
-        textRect.center = (rect.x + 18, rect.y + 18)
-        screen.blit(text, textRect)
+        draw_text_rect(pygame.Color('RED'), rect, FONT4, " - ", pygame.Color('RED'), COLOR3, (rect.x + 18, rect.y + 18))
 
     if comment_active:
         comment_color = pygame.Color('chartreuse4')
@@ -717,13 +718,8 @@ while running:
         comment_color = WHITE
 
     pygame.draw.rect(screen, comment_color, comment_rect)
-    pygame.draw.rect(screen, COLOR3, comment_rect_2)
-
-    font = pygame.font.Font('freesansbold.ttf', 16)
-    text = font.render("Comments:", True, WHITE, COLOR3)
-    textRect = text.get_rect()
-    textRect.center = (comment_rect.x + textRect.width // 2, comment_rect.y - 20)
-    screen.blit(text, textRect)
+    draw_text_rect(COLOR3, comment_rect_2, FONT1, "Comments:", WHITE, COLOR3, (comment_rect.x + textRect.width // 2, comment_rect.y - 20))
+    
 
     if comment_active:
         if time.time() % 1 >= 0.5:
@@ -752,11 +748,7 @@ while running:
         empty_star = pygame.image.load("empty_star.png").convert_alpha()
         empty_star = pygame.transform.scale(empty_star, (30, 30))
 
-        font = pygame.font.Font('freesansbold.ttf', 24)
-        text = font.render(name, True, WHITE, COLOR3)
-        textRect = text.get_rect()
-        textRect.center = (WIDTH * .75, (HEIGHT / 2) - 8 + (40 * n))
-        screen.blit(text, textRect)
+        draw_text_rect(None, None, FONT3, name, WHITE, COLOR3, (WIDTH * .75, (HEIGHT / 2) - 8 + (40 * n)))
 
         for i in range(temp_stars[n]):
             screen.blit(star, (WIDTH * .83 + (i * 25), (HEIGHT / 2) - 25 + (40 * n)))
@@ -781,104 +773,45 @@ while running:
     color = (red, green, 0)
     drawArc(screen, color, (WIDTH * .88, 150), RADIUS, 10, 6.28 * (score / 100))
 
-    font = pygame.font.Font('freesansbold.ttf', 48)
-    text = font.render(str(sum(temp_stars)), True, WHITE, COLOR3)
-    textRect = text.get_rect()
-    textRect.center = (WIDTH * .88, 150)
-    screen.blit(text, textRect)
+    draw_text_rect(None, None, FONT5, str(sum(temp_stars)), WHITE, COLOR3, (WIDTH * .88, 150))
+    
+    draw_text_rect(COLOR2, save_rect, FONT4, " Save Changes ", WHITE, pygame.Color("chartreuse4"), (save_rect.x + save_rect.width / 2, save_rect.y + save_rect.height / 2))
+    
+    draw_text_rect(COLOR2, discard_rect, FONT4, " Discard Changes ", WHITE, pygame.Color("firebrick3"), (discard_rect.x + discard_rect.width / 2, discard_rect.y + discard_rect.height / 2))
 
-    save_rect = pygame.Rect(WIDTH * .88 - 130, HEIGHT - 200, 255, 40)
-    pygame.draw.rect(screen, COLOR2, save_rect)
+    draw_text_rect(COLOR2, new_entry_rect, FONT4, " New Game ", WHITE, COLOR4, (new_entry_rect.x + new_entry_rect.width / 2, new_entry_rect.y + new_entry_rect.height / 2))
 
-    font = pygame.font.Font('freesansbold.ttf', 32)
-    text = font.render(" Save Changes ", True, WHITE, pygame.Color("chartreuse4"))
-    textRect = text.get_rect()
-    textRect.center = (save_rect.x + save_rect.width / 2, save_rect.y + save_rect.height / 2)
-    screen.blit(text, textRect)
-
-    discard_rect = pygame.Rect(WIDTH * .88 - 150, HEIGHT - 150, 300, 40)
-    pygame.draw.rect(screen, COLOR2, discard_rect)
-
-    font = pygame.font.Font('freesansbold.ttf', 32)
-    text = font.render(" Discard Changes ", True, WHITE, pygame.Color("firebrick3"))
-    textRect = text.get_rect()
-    textRect.center = (discard_rect.x + discard_rect.width / 2, discard_rect.y + discard_rect.height / 2)
-    screen.blit(text, textRect)
-
-    finished_rect = pygame.Rect(WIDTH * .94, 250, 45, 35)
-    pygame.draw.rect(screen, WHITE, finished_rect)
-
-    pygame.draw.rect(screen, COLOR2, new_entry_rect)
-    font = pygame.font.Font('freesansbold.ttf', 32)
-    text = font.render(" New Game ", True, WHITE, COLOR4)
-    textRect = text.get_rect()
-    textRect.center = (new_entry_rect.x + new_entry_rect.width / 2, new_entry_rect.y + new_entry_rect.height / 2)
-    screen.blit(text, textRect)
-
-    font = pygame.font.Font('freesansbold.ttf', 32)
     if finished:
-        text = font.render(" X ", True, pygame.Color('chartreuse2'), COLOR3)
+        draw_text_rect(WHITE, finished_rect, FONT4, " X ", pygame.Color('chartreuse2'), COLOR3, (finished_rect.x + finished_rect.width / 2, finished_rect.y + finished_rect.height / 2))
     else:
-        text = font.render("    ", True, WHITE, COLOR3)
-    textRect = text.get_rect()
-    textRect.center = (finished_rect.x + finished_rect.width / 2, finished_rect.y + finished_rect.height / 2)
-    screen.blit(text, textRect)
+        draw_text_rect(WHITE, finished_rect, FONT4, "    ", pygame.Color('chartreuse2'), COLOR3, (finished_rect.x + finished_rect.width / 2, finished_rect.y + finished_rect.height / 2))
 
-    font = pygame.font.Font('freesansbold.ttf', 32)
-    text = font.render("Finished?", True, WHITE, COLOR3)
-    textRect = text.get_rect()
-    textRect.center = (finished_rect.x - textRect.width / 2 - 30, finished_rect.y + finished_rect.height / 2)
-    screen.blit(text, textRect)
+
+    draw_text_rect(None, None, FONT4, "Finished?", WHITE, COLOR3, (finished_rect.x - 90, finished_rect.y + finished_rect.height / 2))
 
     layer1 = pygame.Surface((comment_rect.width, comment_rect.height))
     layer1.fill(COLOR3)
 
-    font = pygame.font.Font('freesansbold.ttf', 20)
+    font = FONT2
     if comment_text != "a" and comment_text != "a|":
         try:
             blit_text(screen, comment_text, (comment_rect.x + 8, comment_rect.y + 8), font, WHITE)
         except:
             pass
+    
+    draw_text_rect(COLOR2, delete_rect, FONT4, "Delete Game", WHITE, RED, (delete_rect.x + 105, delete_rect.y + 20))
 
-    pygame.draw.rect(screen, COLOR2, delete_rect)
-    font = pygame.font.Font('freesansbold.ttf', 32)
-    text = font.render("Delete Game", True, WHITE, RED)
-    textRect = text.get_rect()
-    textRect.center = (delete_rect.x + textRect.width / 2 + 5, delete_rect.y + textRect.height / 2 + 5)
-    screen.blit(text, textRect)
-
-    font = pygame.font.Font('freesansbold.ttf', 24)
-    text = font.render("Sort By:", True, WHITE, COLOR3)
-    textRect = text.get_rect()
-    textRect.center = (WIDTH // 2 - 200, 40)
-    screen.blit(text, textRect)
+    draw_text_rect(None, None, FONT3, "Sort By:", WHITE, COLOR3, (WIDTH // 2 - 200, 40))
 
     if sorting_by == "alphabetical":
-        pygame.draw.rect(screen, COLOR2, alpha_rect)
+        draw_text_rect(COLOR2, alpha_rect, FONT3, "Alphabetical", WHITE, COLOR3, (WIDTH // 2 - 50, 40))
     else:
-        pygame.draw.rect(screen, WHITE, alpha_rect)
-    font = pygame.font.Font('freesansbold.ttf', 24)
-    text = font.render("Alphabetical", True, WHITE, COLOR3)
-    textRect = text.get_rect()
-    textRect.center = (WIDTH // 2 - 50, 40)
-    screen.blit(text, textRect)
+        draw_text_rect(WHITE, alpha_rect, FONT3, "Alphabetical", WHITE, COLOR3, (WIDTH // 2 - 50, 40))
 
     if sorting_by == "rating":
-        pygame.draw.rect(screen, COLOR2, rating_rect)
+        draw_text_rect(COLOR2, rating_rect, FONT3, "Rating", WHITE, COLOR3, (WIDTH // 2 + 100, 40))
     else:
-        pygame.draw.rect(screen, WHITE, rating_rect)
-    font = pygame.font.Font('freesansbold.ttf', 24)
-    text = font.render("Rating", True, WHITE, COLOR3)
-    textRect = text.get_rect()
-    textRect.center = (WIDTH // 2 + 100, 40)
-    screen.blit(text, textRect)
-
-    pygame.draw.rect(screen, COLOR2, next_image_rect)
-    font = pygame.font.Font('freesansbold.ttf', 24)
-    text = font.render("Update Image?", True, WHITE, COLOR3)
-    textRect = text.get_rect()
-    textRect.center = (WIDTH - 180, 40)
-    screen.blit(text, textRect)
+        draw_text_rect(WHITE, rating_rect, FONT3, "Rating", WHITE, COLOR3, (WIDTH // 2 + 100, 40))
 
     pygame.display.flip()
 
