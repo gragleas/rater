@@ -59,7 +59,8 @@ class Game:
         self.splits = splits
         self.platform = platform
         self.finished = finished
-        if not os.path.exists("covers/" + name + ".jpg"):
+        self.image_index = 0
+        if not os.path.exists("covers/" + name.replace(":", '') + ".jpg"):
             self.get_image()
         self.map_splits()
         self.is_finished()
@@ -88,19 +89,28 @@ class Game:
             pass
         data.loc[data['Title'] == self.name, param] = new_value
         data.to_csv("updated_data.csv", index=False)
+        
+    def next_image(self):
+        self.image_index += 1
+        self.get_image()
 
     def get_image(self):
-        response = requests.get("https://mobygames.com/search/quick?q=" + self.name)
+        response = requests.get("https://mobygames.com/search/quick?q=" + "+".join(self.name.lower().split()))
         soup = bs(response.text, "html.parser")
         urls = soup.find_all('a', attrs={'href': re.compile("^https://")})
         valid_url = ''
+        urls_list = []
         for i in urls:
             name = i["href"].replace("https://mobygames.com/game/", '')
             temp_name = self.name.replace("'", "-").replace("_", "-").translate(str.maketrans('', '', string.punctuation.replace("-",""))).replace(' ', '-').lower()
-            if similar(name, platform_names[self.platform] + "/" + temp_name) > .8:
-                valid_url = i["href"]
-                break
-        if valid_url:
+            if similar(name.replace("_", ''), platform_names[self.platform] + "/" + temp_name) > .8:
+                #valid_url = i["href"]
+                urls_list.append(i["href"])
+        if len(urls_list) > 0:
+                try:
+                    valid_url = urls_list[self.image_index % len(urls_list)]
+                except IndexError:
+                    valid_url = urls_list[0]
                 response = requests.get(valid_url)
                 soup = bs(response.content, "html.parser")
                 url = ''
@@ -112,7 +122,6 @@ class Game:
                 try:
                     image_data = requests.get("https://www.mobygames.com" + url.replace("/s/", "/l/")).content
                 except:
-                    print(False)
                     image_data = requests.get("https://www.mobygames.com" + url).content
                 with open("covers/" + self.name.replace(":", '') + ".jpg", "wb") as handler:
                     handler.write(image_data)
@@ -121,8 +130,9 @@ class Game:
         else:
                 print(self.name, "Game not found! Check spelling and platform.")
 
-#game = Game("God of War: Ragnarök", 20, "0/0/0/0", "PS5", True)
+#game = Game("The Forest", 20, "0/0/0/0", "PC", True)
 #game.get_image()
+#os.exit()
 # Global Params
 WIDTH = 1500
 HEIGHT = 700
@@ -342,6 +352,8 @@ discard_rect = pygame.Rect(WIDTH * .88 - 150, HEIGHT - 150, 300, 40)
 
 save_rect = pygame.Rect(WIDTH * .88 - 130, HEIGHT - 200, 255, 40)
 
+next_image_rect = pygame.Rect(WIDTH - 271, 25, 182, 30)
+
 while running:
     WIDTH, HEIGHT = pygame.display.get_surface().get_size()
     # Create rectangle objects for rating plus sign buttons
@@ -413,6 +425,12 @@ while running:
             # If alphabetical is clicked, reload data structures to be sorted alphabetically.
             # If sorting was already done alphabetically, reverse the order.
             # After sorting, select the first game in the list and render the title appropriately
+            
+            if next_image_rect.collidepoint(event.pos):
+                selected_game.next_image()
+                loaded = False
+                game_list, sorted_games, game_rects = reload_structures(sorting_by)
+                
             if alpha_rect.collidepoint(event.pos):
                 if sorting_by == "rating":
                     game_list, sorted_games, game_rects = reload_structures("alphabetical")
@@ -867,6 +885,13 @@ while running:
     else:
         draw_text_rect(WHITE, rating_rect, FONT3, "Rating", WHITE, COLOR3, (WIDTH // 2 + 100, 40))
 
+    pygame.draw.rect(screen, WHITE, next_image_rect)
+    font = pygame.font.Font('freesansbold.ttf', 24)
+    text = font.render("Update Image?", True, WHITE, pygame.Color('darkslategray'))
+    textRect = text.get_rect()
+    textRect.center = (WIDTH - 180, 40)
+    screen.blit(text, textRect)
+    
     pygame.display.flip()
 
 pygame.quit()
