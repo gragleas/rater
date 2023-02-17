@@ -34,17 +34,17 @@ platform_list = {
 }
 
 platform_names = {
-		"PC": "windows",
-		"VR": "windows",
-		"Wii": "wii",
-		"Xbox": "xbox",
-		"Xbox 360": "xbox360",
-		"Xbox One": "xbox-one",
-		"Gamecube": "gamecube",
-		"PS2": "playstation-2",
-		"PS3": "playstation-3",
-		"PS4": "playstation-4",
-		"PS5": "playstation-5"
+        "PC": "windows",
+        "VR": "windows",
+        "Wii": "wii",
+        "Xbox": "xbox",
+        "Xbox 360": "xbox360",
+        "Xbox One": "xbox-one",
+        "Gamecube": "gamecube",
+        "PS2": "playstation-2",
+        "PS3": "playstation-3",
+        "PS4": "playstation-4",
+        "PS5": "playstation-5"
 }
 
 platforms = [key for key in platform_list]
@@ -63,7 +63,7 @@ class Game:
             self.get_image()
         self.map_splits()
         self.is_finished()
-        self.image = "covers/" + self.name + ".jpg"
+        self.image = "covers/" + self.name.replace(":", '') + ".jpg"
         self.comments = comments
 
     def map_splits(self, new=None):
@@ -101,22 +101,28 @@ class Game:
                 valid_url = i["href"]
                 break
         if valid_url:
-		        response = requests.get(valid_url)
-		        soup = bs(response.content, "html.parser")
-		        url = ''
-		        images = soup.findAll('img')
-		        for img in images:
-		            if img.has_attr('src') and "covers" in img["src"]:
-		                url = img['src']
+                response = requests.get(valid_url)
+                soup = bs(response.content, "html.parser")
+                url = ''
+                images = soup.findAll('img')
+                for img in images:
+                    if img.has_attr('src') and "covers" in img["src"]:
+                        url = img['src']
 
-		        image_data = requests.get("https://www.mobygames.com" + url).content
-		        with open("covers/" + self.name + ".jpg", "wb") as handler:
-		            handler.write(image_data)
-		            return 1
-		            
+                try:
+                    image_data = requests.get("https://www.mobygames.com" + url.replace("/s/", "/l/")).content
+                except:
+                    print(False)
+                    image_data = requests.get("https://www.mobygames.com" + url).content
+                with open("covers/" + self.name.replace(":", '') + ".jpg", "wb") as handler:
+                    handler.write(image_data)
+                    return 1
+                    
         else:
-		        print(self.name, "Game not found! Check spelling and platform.")
+                print(self.name, "Game not found! Check spelling and platform.")
 
+#game = Game("God of War: Ragnarök", 20, "0/0/0/0", "PS5", True)
+#game.get_image()
 # Global Params
 WIDTH = 1500
 HEIGHT = 700
@@ -153,7 +159,7 @@ temp_stars = [0, 0, 0, 0]
 
 ## initialize pygame and create window
 pygame.init()
-screen = pygame.display.set_mode((WIDTH, HEIGHT), pygame.RESIZABLE)
+screen = pygame.display.set_mode((WIDTH, HEIGHT), pygame.RESIZABLE, pygame.FULLSCREEN)
 pygame.display.set_caption("Game Ratings")
 clock = pygame.time.Clock()  ## For syncing the FPS
 
@@ -542,11 +548,14 @@ while running:
 
                 selected_game.comments = comment_text
                 selected_game.finished = finished
-                try:
-                    os.rename("covers/" + selected_game.name + ".jpg", "covers/" + new_title + ".jpg")
-                except FileNotFoundError:
+                if not new_entry_active:
+                    try:
+                        os.rename("covers/" + selected_game.name.replace(":", '') + ".jpg", "covers/" + new_title.replace(":", '') + ".jpg")
+                    except:
+                        selected_game.get_image()
+                        os.rename("covers/" + selected_game.name.replace(":", '') + ".jpg", "covers/" + new_title.replace(":", '') + ".jpg")
+                else:
                     selected_game.get_image()
-                    os.rename("covers/" + selected_game.name + ".jpg", "covers/" + new_title + ".jpg")
                 selected_game.name = new_title
                 game_list, sorted_games, game_rects = reload_structures(sorting_by)
 
@@ -688,14 +697,14 @@ while running:
                         new_title_rect = pygame.Rect(WIDTH // 2 - (titleWidth * 3) // 2 - 5, 70, (titleWidth * 3) + 10, 60)
 
                     else:
-                    		if new_title == "New Game":
-                    				new_title = event.unicode
-                    		else:
-				                    new_title += event.unicode
-				                    font = FONT1
-				                    text = font.render(new_title, True, WHITE, COLOR3)
-				                    commentWidth = text.get_width()
-				                    new_title_rect = pygame.Rect(WIDTH // 2 - (commentWidth * 3) // 2 - 5, 70, (commentWidth * 3) + 10, 60)
+                            if new_title == "New Game":
+                                    new_title = event.unicode
+                            else:
+                                    new_title += event.unicode
+                                    font = FONT1
+                                    text = font.render(new_title, True, WHITE, COLOR3)
+                                    commentWidth = text.get_width()
+                                    new_title_rect = pygame.Rect(WIDTH // 2 - (commentWidth * 3) // 2 - 5, 70, (commentWidth * 3) + 10, 60)
 
         if event.type == MOUSEWHEEL and event.type != MOUSEBUTTONDOWN:
             if event.y < 0 and game_rects[sorted_games[-1]][0].y + 30 > HEIGHT:
@@ -720,11 +729,12 @@ while running:
         if new_entry_active == True:
             pygame.draw.rect(screen, WHITE, new_title_rect)
     try:
-    	image = pygame.image.load(selected_game.image)
-    except FileNotFoundError:
-    	selected_game.get_image()
-    	image = pygame.image.load(selected_game.image)
-    	
+        image = pygame.image.load(selected_game.image)
+    except:
+        selected_game.get_image()
+        selected_game.image = "covers/" + selected_game.name.replace(":", '') + ".jpg"
+        image = pygame.image.load(selected_game.image)
+        
     width = image.get_width()
     height = image.get_height()
 
