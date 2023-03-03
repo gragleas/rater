@@ -133,7 +133,7 @@ save_rect = pygame.Rect(WIDTH * .88 - 130, HEIGHT - 200, 255, 40)
 
 next_image_rect = pygame.Rect(WIDTH - 271, 15, 182, 30)
 
-next_cover_rect = pygame.Rect(WIDTH - 271, 45, 182, 30)
+next_cover_rect = pygame.Rect(WIDTH - 271, 50, 182, 30)
 
 ## Game loop
 # Read in data from CSV, if NaN, create empty CSV
@@ -159,7 +159,6 @@ def create_game(arg_list):
 # Populate game dictionary with CSV data
 for index, row in data.iterrows():
     args_list.append([row[0], row[1], row[2], row[3], row[4], row[5]])
-
 
 new_args_list = sorted(args_list,key=lambda x: x[1])
 new_args_list.reverse()
@@ -285,7 +284,6 @@ def reload_structures(sort_by, reverse=False):
         textRect.center = (width // 2 + 25, 30 + (40 * n))
         new_game_rects[title] = [rect, textRect, text]
 
-
     return (new_sorted_list, new_game_rects)
 
 def clear_folder(dir):
@@ -365,7 +363,7 @@ while running:
     alpha_rect = pygame.Rect(WIDTH // 2 - 129, 26, 158, 30)
     rating_rect = pygame.Rect(WIDTH // 2 + 58, 26, 84, 30)
 
-    finished_rect = pygame.Rect(WIDTH * .94, 250, 45, 35)
+    finished_rect = pygame.Rect(WIDTH * .92, 270, 45, 35)
 
     discard_rect = pygame.Rect(WIDTH * .88 - 150, HEIGHT - 150, 300, 40)
 
@@ -475,11 +473,20 @@ while running:
             # Remove the entry from all of the data structures. If this causes the data
             # Structures to be empty, populate with a blank game to be edited
             if delete_rect.collidepoint(event.pos):
-                data = remove_data(data, selected_game.name)
+                data = remove_data(data, selected_game.name.replace(":", ""))
                 game_list.pop(selected_game.name)
-                selected_game = game_list[sorted_games[0]]
+                clear_folder("covers/" + selected_game.name.replace(":", ""))
+                os.rmdir("covers/" + selected_game.name.replace(":", ""))
+                popped_game = sorted_games.index(selected_game.name)
+                sorted_games.remove(selected_game.name)
+                game_rects.pop(selected_game.name)
+                
+                for g in sorted_games[popped_game:]:
+                    game_rects[g][0] = game_rects[g][0].move(0, -40)
+                    game_rects[g][1] = game_rects[g][1].move(0, -40)
+                selected_game = game_list[sorted_games[popped_game]]
                 comment_text = selected_game.comments
-                sorted_games, game_rects = reload_structures(sorting_by)
+                #sorted_games, game_rects = reload_structures(sorting_by)
                 if len(sorted_games) == 0:
                     data = data.append([{"Title": "New Game", "Score": 0, "Splits": "0/0/0/0", "Platform": "PC",\
                                          "Finished": "N", "Comments": ""}])
@@ -530,7 +537,8 @@ while running:
                 if new_entry_active == True:
                     data = add_data(data, [new_title, sum(temp_stars), splits, selected_game.platform, finished, comment_text])
                     selected_game.name = new_title
-
+                    selected_game.rating = sum(temp_stars)
+                    selected_game.splits = temp_stars
 
                 else:
                     selected_game.edit_entry("Splits", splits)
@@ -547,13 +555,25 @@ while running:
 
                 selected_game.comments = comment_text
                 selected_game.finished = finished
+                selected_game.rating = sum(temp_stars)
+                
                 if not new_entry_active:
                     try:
                         os.rename("covers/" + selected_game.name.replace(":", '') + "/" + str(selected_game.image_index) + "/" + str(selected_game.cover_index) + ".jpg",
-                                  "covers/" + new_title.name.replace(":", '') + "/" + str(selected_game.image_index) + "/" + str(selected_game.cover_index) + ".jpg")
-                    except:
-                        os.rename("covers/" + selected_game.name.replace(":", '') + "/" + str(selected_game.image_index) + "/" + str(selected_game.cover_index) + ".jpg",
-                                  "covers/" + new_title.name.replace(":", '') + "/" + str(selected_game.image_index) + "/" + str(selected_game.cover_index) + ".jpg")
+                                  "covers/" + new_title.replace(":", '') + "/" + str(selected_game.image_index) + "/temp.jpg")
+                                  
+                        os.rename("covers/" + new_title.replace(":", '') + "/" + str(selected_game.image_index) + "/0.jpg",
+                                  "covers/" + new_title.replace(":", '') + "/" + str(selected_game.image_index) + "/" + str(selected_game.cover_index) + ".jpg")
+                                  
+                        os.rename("covers/" + new_title.replace(":", '') + "/" + str(selected_game.image_index) + "/temp.jpg",
+                                  "covers/" + new_title.replace(":", '') + "/" + str(selected_game.image_index) + "/0.jpg")
+                        selected_game.cover_index = 0
+                        selected_game.image = "covers/" + selected_game.name.replace(":", "") + "/" + str(selected_game.image_index) + "/" + str(selected_game.cover_index) + ".jpg"
+                    
+                    except FileNotFoundError:
+                        pass
+                                 
+                    
                 else:
                     image = pygame.image.load("covers/New Game/0/0.jpg")
                     clear_folder("covers/" + selected_game.name.replace(":", "") + "/")
@@ -568,7 +588,54 @@ while running:
                             continue
                         found = True
                 game_list[selected_game.name] = selected_game
-                sorted_games, game_rects = reload_structures(sorting_by)
+ 
+                try:
+                    if sorting_by == "alphabetical":
+                        inserted_game = sorted_games.index(selected_game.name)
+                        if sorted_games[0] < sorted_games[-1]:
+                            sorted_games.append(selected_game.name)
+                            sorted_games.sort()
+                        else:
+                            sorted_games.append(selected_game.name)
+                            sorted_games.sort()
+                            sorted_games.reverse()
+                    else:
+                        if game_list[sorted_games[0]].rating < game_list[sorted_games[-1]].rating:
+                            for i in range(len(sorted_games)):
+                                if selected_game.rating < game_list[sorted_games[i]].rating:
+                                    inserted_game = i
+                                    break
+                            sorted_games.append(selected_game.name)
+                            sorted_games.sort(key = lambda x: game_list[x].rating)
+                        else:
+                            for i in range(len(sorted_games)):
+                                if selected_game.rating > game_list[sorted_games[i]].rating:
+                                    inserted_game = i
+                                    break
+                            sorted_games.append(selected_game.name)
+                            sorted_games.sort(key = lambda x: game_list[x].rating)
+                            sorted_games.reverse()
+                except IndexError:
+                    pass
+                
+                next_game = sorted_games[sorted_games.index(selected_game.name)+1]
+                next_game_index = list(game_rects.keys()).index(next_game)
+                font = FONT3
+                width, height = font.size(selected_game.name)
+                n = game_rects[next_game]
+                rect = pygame.Rect(21, n[0].y, width + 8, height + 8)
+                text = font.render(selected_game.name, True, WHITE, COLOR4)
+                textRect = text.get_rect()
+                textRect.center = (width // 2 + 25, n[1].centery)
+                game_rects[selected_game.name] = [rect, textRect, text]
+
+
+                for g in list(game_rects.keys())[next_game_index:]:
+                    game_rects[g][0] = game_rects[g][0].move(0, 40)
+                    game_rects[g][1] = game_rects[g][1].move(0, 40)
+                    
+                for y in list(game_rects.keys()):
+                    print(y, game_rects[y][0].x, game_rects[y][0].y)
 
                 selected_game = game_list[selected_game.name]
 
@@ -846,9 +913,9 @@ while running:
     if score > 50:
         red = 255 * (abs(score - 100) / 50)
     color = (red, green, 0)
-    drawArc(screen, color, (WIDTH * .88, 150), RADIUS, 10, 6.28 * (score / 100))
+    drawArc(screen, color, (WIDTH * .88, 170), RADIUS, 10, 6.28 * (score / 100))
 
-    draw_text_rect(None, None, FONT5, str(sum(temp_stars)), WHITE, COLOR3, (WIDTH * .88, 150))
+    draw_text_rect(None, None, FONT5, str(sum(temp_stars)), WHITE, COLOR3, (WIDTH * .88, 170))
     
     draw_text_rect(COLOR2, save_rect, FONT4, " Save Changes ", WHITE, pygame.Color("chartreuse4"), (save_rect.x + save_rect.width / 2, save_rect.y + save_rect.height / 2))
     
@@ -899,7 +966,7 @@ while running:
     font = pygame.font.Font('freesansbold.ttf', 24)
     text = font.render("Update Cover?", True, WHITE, pygame.Color('darkslategray'))
     textRect = text.get_rect()
-    textRect.center = (WIDTH - 180, 60)
+    textRect.center = (WIDTH - 180, 65)
     screen.blit(text, textRect)
     
     pygame.display.flip()
